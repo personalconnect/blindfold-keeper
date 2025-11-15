@@ -2,7 +2,7 @@
   <img width="500" height="500" alt="Image" src="https://github.com/user-attachments/assets/11b193f0-b9ed-45e9-a7fa-923f0c8c47ae" />
 </p>
 
-This is a helper program for the [BlindFold](https://chromewebstore.google.com/detail/blindfold/cmgjlocmnppfpknaipdfodjhbplnhimk?hl=ko&utm_source=ext_sidebar) Chrome extension's E2EE configuration that helps store the device key in the Windows Credential Manager on Windows and in the macOS Keychain.
+This helper program supports the E2EE configuration for the [BlindFold Chrome Extension](https://chromewebstore.google.com/detail/blindfold/cmgjlocmnppfpknaipdfodjhbplnhimk?hl=ko&utm_source=ext_sidebar) **v1.0.2** by storing the device key in the Windows Credential Manager and the macOS Keychain.
 
 ## Download
 
