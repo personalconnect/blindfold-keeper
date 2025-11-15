@@ -13,7 +13,7 @@ WIN_PKG := $(WIN_PKG_DIR)/Blindfold-Keeper.exe
 # Go 크로스 컴파일용 Windows 컴파일러
 WIN_CC := x86_64-w64-mingw32-gcc
 
-.PHONY: all build pkg clean build-macos build-windows pkg-macos pkg-windows
+.PHONY: all build pkg clean build-macos build-windows pkg-macos pkg-windows release
 
 all: build pkg
 
@@ -62,3 +62,20 @@ clean:
 	@echo "Cleaning up build artifacts..."
 	@rm -f $(MAC_BIN) $(WIN_BIN)
 	@rm -rf build_root output
+
+release: pkg
+ifndef TAG
+	$(error TAG is not set. Usage: make release TAG=v1.0.0)
+endif
+	@echo "Creating git tag $(TAG)..."
+	@git tag $(TAG)
+	@git push origin $(TAG)
+
+	@echo "Uploading artifacts to GitHub Release..."
+	@gh release create $(TAG) \
+	--title "Release $(TAG)" \
+	--notes "Release $(TAG) of Blindfold Keeper" \
+	$(MAC_PKG) \
+	$(WIN_PKG)
+
+	@echo "Release $(TAG) created successfully."
