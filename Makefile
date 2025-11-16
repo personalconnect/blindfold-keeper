@@ -207,23 +207,26 @@ endif
 	@git push origin $(TAG)
 
 	@echo "Preparing release notes with checksums and changelog..."
-	@CHECKSUMS_CONTENT=$$(cat $(CHECKSUMS_FILE)); \
-	PREV_TAG=$$(git describe --tags --abbrev=0 $(TAG)^ 2>/dev/null || echo ""); \
+	@PREV_TAG=$$(git describe --tags --abbrev=0 $(TAG)^ 2>/dev/null || echo ""); \
 	if [ -z "$$PREV_TAG" ]; then \
-		CHANGES=$$(git log --pretty=format:"%h - %s" $(TAG)); \
+		git log --pretty=format:"%h - %s" $(TAG) > /tmp/release_changes.txt; \
 	else \
-		CHANGES=$$(git log --pretty=format:"%h - %s" $$PREV_TAG..$(TAG)); \
+		git log --pretty=format:"%h - %s" $$PREV_TAG..$(TAG) > /tmp/release_changes.txt; \
 	fi; \
-	RELEASE_NOTES="Changes:\n$$CHANGES\n\n$$CHECKSUMS_CONTENT"; \
+	echo "Changes:" > /tmp/release_notes.txt; \
+	cat /tmp/release_changes.txt >> /tmp/release_notes.txt; \
+	echo "" >> /tmp/release_notes.txt; \
+	cat $(CHECKSUMS_FILE) >> /tmp/release_notes.txt; \
 	echo "Uploading artifacts to GitHub Release..."; \
 	gh release create $(TAG) \
 	--title "Release version: $(TAG)" \
-	--notes "$$RELEASE_NOTES" \
+	--notes-file /tmp/release_notes.txt \
 	$(MAC_PKG_AMD64) $(MAC_SIG_AMD64) \
 	$(MAC_PKG_ARM64) $(MAC_SIG_ARM64) \
 	$(WIN_PKG) $(WIN_SIG) \
 	$(LINUX_DEB_AMD64) $(LINUX_SIG_AMD64) \
 	$(LINUX_DEB_ARM64) $(LINUX_SIG_ARM64) \
-	$(CHECKSUMS_FILE)
+	$(CHECKSUMS_FILE); \
+	rm -f /tmp/release_notes.txt /tmp/release_changes.txt
 
 	@echo "Release $(TAG) created successfully."
