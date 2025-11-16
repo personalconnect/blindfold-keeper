@@ -25,7 +25,9 @@ WIN_SIG := $(WIN_PKG).sig
 LINUX_SIG_AMD64 := $(LINUX_DEB_AMD64).sig
 LINUX_SIG_ARM64 := $(LINUX_DEB_ARM64).sig
 
-.PHONY: all build pkg clean build-macos build-macos-amd64 build-macos-arm64 build-windows build-linux build-linux-amd64 build-linux-arm64 pkg-macos pkg-macos-amd64 pkg-macos-arm64 pkg-windows pkg-linux pkg-linux-amd64 pkg-linux-arm64 sign release
+CHECKSUMS_FILE := output/checksums.txt
+
+.PHONY: all build pkg clean build-macos build-macos-amd64 build-macos-arm64 build-windows build-linux build-linux-amd64 build-linux-arm64 pkg-macos pkg-macos-amd64 pkg-macos-arm64 pkg-windows pkg-linux pkg-linux-amd64 pkg-linux-arm64 sign checksums release
 
 all: build pkg
 
@@ -172,12 +174,31 @@ sign:
 	@gpg --detach-sign --output $(LINUX_SIG_ARM64) $(LINUX_DEB_ARM64)
 	@echo "All artifacts signed successfully."
 
+checksums:
+	@echo "Generating SHA256 checksums..."
+	@mkdir -p output
+	@rm -f $(CHECKSUMS_FILE)
+	@echo "# Hashes:" > $(CHECKSUMS_FILE)
+	@echo "" >> $(CHECKSUMS_FILE)
+	@echo "| Filename | SHA256 |" >> $(CHECKSUMS_FILE)
+	@echo "|----------|--------|" >> $(CHECKSUMS_FILE)
+	@for file in $(MAC_PKG_AMD64) $(MAC_SIG_AMD64) $(MAC_PKG_ARM64) $(MAC_SIG_ARM64) $(WIN_PKG) $(WIN_SIG) $(LINUX_DEB_AMD64) $(LINUX_SIG_AMD64) $(LINUX_DEB_ARM64) $(LINUX_SIG_ARM64); do \
+		if [ -f "$$file" ]; then \
+			filename=$$(basename "$$file"); \
+			hash=$$(shasum -a 256 "$$file" | awk '{print $$1}'); \
+			echo "| $$filename | $$hash |" >> $(CHECKSUMS_FILE); \
+		fi \
+	done
+	@echo "" >> $(CHECKSUMS_FILE)
+	@echo "Checksums written to $(CHECKSUMS_FILE)"
+	@cat $(CHECKSUMS_FILE)
+
 clean:
 	@echo "Cleaning up build artifacts..."
 	@rm -f $(MAC_BIN_AMD64) $(MAC_BIN_ARM64) $(WIN_BIN) $(LINUX_BIN_AMD64) $(LINUX_BIN_ARM64)
 	@rm -rf build_root_macos_amd64 build_root_macos_arm64 build_root build_root_linux_amd64 build_root_linux_arm64 output
 
-release: pkg sign
+release: pkg sign checksums
 ifndef TAG
 	$(error TAG is not set. Usage: make release TAG=v1.0.0)
 endif
@@ -185,14 +206,18 @@ endif
 	@git tag $(TAG)
 	@git push origin $(TAG)
 
-	@echo "Uploading artifacts to GitHub Release..."
-	@gh release create $(TAG) \
+	@echo "Preparing release notes with checksums..."
+	@CHECKSUMS_CONTENT=$$(cat $(CHECKSUMS_FILE)); \
+	echo "Uploading artifacts to GitHub Release..."; \
+	gh release create $(TAG) \
 	--title "$(TAG)" \
-	--notes "Release $(TAG) of Dragpass Keeper\n\n## Verification\n\nYou can verify the integrity of downloaded files using GPG:\n\`\`\`bash\ngpg --verify <filename>.sig <filename>\n\`\`\`" \
+	--generate-notes \
+	--notes "$$CHECKSUMS_CONTENT" \
 	$(MAC_PKG_AMD64) $(MAC_SIG_AMD64) \
 	$(MAC_PKG_ARM64) $(MAC_SIG_ARM64) \
 	$(WIN_PKG) $(WIN_SIG) \
 	$(LINUX_DEB_AMD64) $(LINUX_SIG_AMD64) \
-	$(LINUX_DEB_ARM64) $(LINUX_SIG_ARM64)
+	$(LINUX_DEB_ARM64) $(LINUX_SIG_ARM64) \
+	$(CHECKSUMS_FILE)
 
 	@echo "Release $(TAG) created successfully."
