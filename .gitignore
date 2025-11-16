@@ -4,5 +4,7 @@ dragpass-keeper-*
 build_root/
 build_root_linux_amd64/
 build_root_linux_arm64/
+build_root_macos_amd64/
+build_root_macos_arm64/
 .DS_Store
 .vscode
