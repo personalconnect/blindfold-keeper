@@ -4,14 +4,14 @@ AppName=Dragpass Keeper
 AppVersion=1.0
 ; C:\Program Files\Dragpass
 DefaultDirName={commonpf}\Dragpass
-OutputBaseFilename=Dragpass-Keeper
+OutputBaseFilename=dragpass-keeper
 PrivilegesRequired=admin
 SolidCompression=yes
 WizardStyle=modern
 OutputDir=output\windows
 
 [Files]
-Source: "win-dragpass-keeper.exe"; DestDir: "{app}"
+Source: "dragpass-keeper.exe"; DestDir: "{app}"
 
 [Registry]
 Root: HKLM; Subkey: "SOFTWARE\Google\Chrome\NativeMessagingHosts\com.dragpass.keeper"; ValueType: string; ValueName: ""; ValueData: "{app}\com.dragpass.keeper.json"; Flags: uninsdeletekey
@@ -41,7 +41,7 @@ begin
       JsonContent.Add('{');
       JsonContent.Add('  "name": "com.dragpass.keeper",');
       JsonContent.Add('  "description": "Dragpass Device Key Storage",');
-      JsonContent.Add('  "path": "' + AppPath + '\\win-dragpass-keeper.exe",');
+      JsonContent.Add('  "path": "' + AppPath + '\\dragpass-keeper.exe",');
       JsonContent.Add('  "type": "stdio",');
       JsonContent.Add('  "allowed_origins": [');
       JsonContent.Add('    "chrome-extension://cmgjlocmnppfpknaipdfodjhbplnhimk/"');
