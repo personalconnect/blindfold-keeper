@@ -206,13 +206,19 @@ endif
 	@git tag $(TAG)
 	@git push origin $(TAG)
 
-	@echo "Preparing release notes with checksums..."
+	@echo "Preparing release notes with checksums and changelog..."
 	@CHECKSUMS_CONTENT=$$(cat $(CHECKSUMS_FILE)); \
+	PREV_TAG=$$(git describe --tags --abbrev=0 $(TAG)^ 2>/dev/null || echo ""); \
+	if [ -z "$$PREV_TAG" ]; then \
+		CHANGES=$$(git log --pretty=format:"%h - %s" $(TAG)); \
+	else \
+		CHANGES=$$(git log --pretty=format:"%h - %s" $$PREV_TAG..$(TAG)); \
+	fi; \
+	RELEASE_NOTES="Changes:\n$$CHANGES\n\n$$CHECKSUMS_CONTENT"; \
 	echo "Uploading artifacts to GitHub Release..."; \
 	gh release create $(TAG) \
 	--title "Release version: $(TAG)" \
-	--generate-notes \
-	--notes "$$CHECKSUMS_CONTENT" \
+	--notes "$$RELEASE_NOTES" \
 	$(MAC_PKG_AMD64) $(MAC_SIG_AMD64) \
 	$(MAC_PKG_ARM64) $(MAC_SIG_ARM64) \
 	$(WIN_PKG) $(WIN_SIG) \
