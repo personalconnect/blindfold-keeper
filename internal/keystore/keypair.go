@@ -20,9 +20,12 @@ func GenerateRSAKeyPair() (*KeyPair, error) {
 	}
 
 	// Convert private key to PEM format
-	privateKeyDER := x509.MarshalPKCS1PrivateKey(privateKey)
+	privateKeyDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal private key: %v", err)
+	}
 	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
+		Type:  "PRIVATE KEY",
 		Bytes: privateKeyDER,
 	})
 
@@ -52,9 +55,14 @@ func ParsePrivateKey(privateKeyPEM string) (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode PEM block")
 	}
 
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	privateKeyInterface, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	}
+
+	privateKey, ok := privateKeyInterface.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("not an RSA private key")
 	}
 
 	return privateKey, nil
