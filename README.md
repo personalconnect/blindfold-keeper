@@ -101,3 +101,407 @@ After running the `.exe` installer, the following files are created:
   - `unins000.dat` - Uninstaller data
 
 **Key Storage**: Windows Credential Manager
+
+## API Reference
+
+DragPass Keeper communicates with the Chrome extension via Native Messaging protocol. All messages use an **envelope pattern** for better type safety and extensibility.
+
+### Message Format
+
+**Request (Envelope Pattern):**
+```json
+{
+  "action": "action_name",
+  "payload": {
+    // action-specific fields
+  }
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    // action-specific response data
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "error message"
+}
+```
+
+---
+
+### Health Check
+
+#### `ping` - Health Check
+
+Check if the DragPass Keeper is running and responsive.
+
+**Request:**
+```json
+{
+  "action": "ping"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.0.4",    
+    "hash": "binary_sha256_hash",
+    "path": "/path/to/dragpass-keeper"
+  }
+}
+```
+
+---
+
+### Device Key Management
+
+#### `savedevicekey` - Save Device Key
+
+Stores the device encryption key in the OS keystore.
+
+**Request:**
+```json
+{
+  "action": "savedevicekey",
+  "payload": {
+    "key": "base64_encoded_device_key"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+#### `getdevicekey` - Get Device Key
+
+Retrieves the stored device encryption key.
+
+**Request:**
+```json
+{
+  "action": "getdevicekey"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "key": "base64_encoded_device_key"
+  }
+}
+```
+
+---
+
+#### `deletedevicekey` - Delete Device Key
+
+Removes the device encryption key from the keystore.
+
+**Request:**
+```json
+{
+  "action": "deletedevicekey"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Keypair Management
+
+#### `generatekeypair` - Generate RSA Keypair
+
+Generates a new RSA-2048 keypair for the Helper. Requires server signature verification.
+
+**Request:**
+```json
+{
+  "action": "generatekeypair",
+  "payload": {
+    "challenge_token": "server_provided_challenge_token",
+    "signature": "base64_server_signature"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "publickey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  }
+}
+```
+
+**Notes:**
+- Verifies the signature using the server's public key
+- Deletes existing session code and keypair before generating new one
+- Stores both private and public keys in the OS keystore
+
+---
+
+#### `getpublickey` - Get Helper Public Key
+
+Retrieves the Helper's public key.
+
+**Request:**
+```json
+{
+  "action": "getpublickey"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "publickey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  }
+}
+```
+
+---
+
+### Session Code Management
+
+#### `savesessioncode` - Save Encrypted Session Code
+
+Decrypts and stores the session code. Used during signup.
+
+**Request:**
+```json
+{
+  "action": "savesessioncode",
+  "payload": {
+    "encrypted_session_code": "base64_encrypted_session_code",
+    "signature": "base64_server_signature"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "session_code": "decrypted_session_code"
+  }
+}
+```
+
+**Process:**
+1. Verifies signature using server's public key
+2. Decrypts the session code using Helper's private key (RSA-OAEP with SHA-256)
+3. Stores the decrypted session code in the OS keystore
+4. Returns the decrypted session code
+
+---
+
+#### `getsessioncode` - Get Session Code
+
+Retrieves the stored session code.
+
+**Request:**
+```json
+{
+  "action": "getsessioncode"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "session_code": "stored_session_code"
+  }
+}
+```
+
+---
+
+### Signup Flow
+
+#### `signalias` - Sign User Alias
+
+Signs the user alias with Helper's private key. Used during signup.
+
+**Request:**
+```json
+{
+  "action": "signalias",
+  "payload": {
+    "alias": "user_alias"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "signature": "base64_signature",
+    "publickey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  }
+}
+```
+
+**Process:**
+1. Signs the alias using Helper's private key (RSA PKCS#1 v1.5 with SHA-256)
+2. Returns the signature and Helper's public key
+
+---
+
+### Login Flow
+
+#### `signaliaswithtimestamp` - Sign Alias with Timestamp
+
+Signs the user alias with current timestamp. Used for login authentication.
+
+**Request:**
+```json
+{
+  "action": "signaliaswithtimestamp",
+  "payload": {
+    "alias": "user_alias"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "signature": "base64_signature",
+    "timestamp": 1234567890
+  }
+}
+```
+
+**Process:**
+1. Generates current Unix timestamp
+2. Creates payload: `"alias:timestamp"`
+3. Signs the payload using Helper's private key
+4. Returns the signature and timestamp
+
+---
+
+#### `signchallengetoken` - Sign Challenge Token
+
+Verifies and signs a challenge token. Used for login verification.
+
+**Request:**
+```json
+{
+  "action": "signchallengetoken",
+  "payload": {
+    "challenge_token": "server_challenge_token",
+    "signature": "base64_server_signature"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "signature": "base64_helper_signature"
+  }
+}
+```
+
+**Process:**
+1. Verifies the server's signature on the challenge token using server's public key
+2. Signs the challenge token using Helper's private key
+3. Returns the Helper's signature
+
+---
+
+## Cryptographic Details
+
+### Key Formats
+- **RSA Key Size**: 2048 bits
+- **Private Key Format**: PKCS#8 PEM
+- **Public Key Format**: PKIX PEM
+
+### Algorithms
+- **Signature Algorithm**: RSA PKCS#1 v1.5 with SHA-256
+- **Encryption Algorithm**: RSA-OAEP with SHA-256
+- **Hash Function**: SHA-256
+
+### Key Storage Locations
+
+**macOS Keychain:**
+```
+Service: com.dragpass.keeper
+Items:
+- DragPassServerPublicKey
+- DragPassKeeperPrivateKey
+- DragPassKeeperPublicKey
+- DeviceKey
+- SessionCode
+```
+
+**Linux Secret Service:**
+```
+Collection: default keyring
+Schema: com.dragpass.keeper
+Items:
+- DragPassServerPublicKey
+- DragPassKeeperPrivateKey
+- DragPassKeeperPublicKey
+- DeviceKey
+- SessionCode
+```
+
+**Windows Credential Manager:**
+```
+Target Prefix: com.dragpass.keeper
+Credentials:
+- DragPassServerPublicKey
+- DragPassKeeperPrivateKey
+- DragPassKeeperPublicKey
+- DeviceKey
+- SessionCode
+```
+
+---
+
+## Security Considerations
+
+1. **Server Public Key**: Hardcoded in the binary and verified during initialization
+2. **Private Key Protection**: Stored only in OS-native encrypted keystores
+3. **Signature Verification**: All server communications are verified using RSA signatures
+4. **Encrypted Transport**: Session codes are encrypted with Helper's public key before transmission
+5. **Time-based Authentication**: Login uses timestamp-based signatures to prevent replay attacks
