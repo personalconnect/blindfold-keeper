@@ -211,15 +211,13 @@ func HandleGetPublicKey(req GetPublicKeyRequest) BaseResponse {
 func HandleSignAlias(req SignAliasRequest) BaseResponse {
 	log.Println("alias signing request processing...")
 
-	// Check if keypair already exists (device already registered)
-	privateKeyPEM, err := getPrivateKey()
-	if err == nil {
-		// Keypair exists = device already registered
-		log.Println("alias signing error: device already registered")
+	_, keyErr := getPrivateKey()
+	_, sessionErr := getSessionCode()
+	if keyErr == nil && sessionErr == nil {
+		log.Println("alias signing error: device already registered and session code exists")
 		return BaseResponse{Success: false, Error: "device already registered. this device has already been registered for signup"}
 	}
 
-	// Keypair doesn't exist, proceed with signup - generate new keypair
 	log.Println("generating new keypair for signup...")
 	keyPair, err := GenerateRSAKeyPair()
 	if err != nil {
@@ -240,7 +238,7 @@ func HandleSignAlias(req SignAliasRequest) BaseResponse {
 	}
 
 	log.Println("keypair generated successfully for signup")
-	privateKeyPEM = keyPair.PrivateKey
+	privateKeyPEM := keyPair.PrivateKey
 
 	// Parse the private key
 	privateKey, err := ParsePrivateKey(privateKeyPEM)
