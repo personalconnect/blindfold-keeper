@@ -37,6 +37,12 @@ import (
 // (getpublickey) Keeper 공개키 조회
 // (savesessioncode) 암호화된 세션 코드 저장
 
+func init() {
+	if err := keystore.EnsureServerPublicKey(); err != nil {
+		log.Fatalf("Critical: Failed to ensure server public key: %v", err)
+	}
+}
+
 func main() {
 	// Stdout is sent to the Chrome extension, so we log to Stderr
 	log.SetOutput(os.Stderr)
